@@ -6,11 +6,13 @@ References
 Videos
 https://www.youtube.com/watch?v=MvVqjQqSdM4&ab_channel=FaztCode
 https://www.youtube.com/watch?v=PTZiDnuC86g&ab_channel=TraversyMedia
+https://www.youtube.com/watch?v=-1DmVCPB6H8&ab_channel=UskoKruM2010
 
 Github
 https://github.com/faznaimov/Surfs-Up/tree/master
 https://github.com/ermiasgelaye/sqlalchemy-challenge/tree/master
 https://github.com/yeyanwang/sqlalchemy-challenge/blob/main/SurfsUp/app.py
+https://github.com/yeyanwang/sqlalchemy-challenge/tree/main
 
 
 ---

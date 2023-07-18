@@ -14,7 +14,9 @@ from dateutil.relativedelta import relativedelta
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///./Resources/hawaii.sqlite")
+
+# Add connect_args to create news thread
+engine = create_engine("sqlite:///./Resources/hawaii.sqlite", connect_args={'check_same_thread': False})
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -47,19 +49,18 @@ def homepage():
         --------------------------------------------------------------------------------------------<br/>
         <h1>Climate App</h1>
        This is a Flask API for Climate Analysis.<br/><br/><br/>
-        <img width='600' src='https://s1.eestatic.com/2022/02/01/alicante/deporte/otros-deportes/646945755_221530575_1706x960.jpg'/>"
+        <img width='600' src='https://s1.eestatic.com/2022/02/01/alicante/deporte/otros-deportes/646945755_221530575_1706x960.jpg'/>
     <h3> The available routes are: </h3>
     --------------------------------------------------------------------<br/>
     <ul>
     <li><a href = "/api/v1.0/precipitation"> PRECIPITATION </a> To retrieve precipitations from last 12 months. </li>
     <li><a href = "/api/v1.0/stations"> STATIONS </a> To retrieve a list of the stations. </li> 
     <li><a href = "/api/v1.0/tobs"> TEMPERATURES </a> To retrieve dates and temperature observations of the most-active station from last 12 months. </li>
-    <li><a href = "/api/v1.0/start"> START </a> To retrieve the minimum, average, and maximum temperatures for a specific start date. </li>
-     <li><a href = "/api/v1.0/start/<end>"> START/END </a> To retrieve the minimum, average, and maximum temperatures for a specific start-end range. </li>
+    <li><a href = "/api/v1.0/<start>"> START </a> To retrieve the minimum, average, and maximum temperatures for a specific start date. </li>
+     <li><a href = "/api/v1.0/<start>/<end>"> START/END </a> To retrieve the minimum, average, and maximum temperatures for a specific start-end range. </li>
     </ul>
     """
 ()
-@app.route("/api/v1.0/<start>/<end>")
 
 # 2. `/api/v1.0/precipitation`
 # Convert the query results from your precipitation analysis (i.e. retrieve only the 
@@ -131,44 +132,66 @@ def temperature():
 # For a specified start date and end date, calculate `TMIN`, `TAVG`, and `TMAX` 
 # for the dates from the start date to the end date, inclusive.
 
-@app.route('/api/v1.0<start>')
-def start(start):
-    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+@app.route("/api/v1.0/<start>")
+@app.route("/api/v1.0/<start>/<end>")
+def cal_temp(start=None, end=None):
+    # Create the session
+    session = Session(engine)
+    
+    # Make a list to query (the minimum, average and maximum temperature)
+    sel=[func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
+    
+    # Check if there is an end date then do the task accordingly
+    if end == None: 
+        # Query the data from start date to the most recent date
+        start_data = session.query(*sel).\
+                            filter(Measurement.date >= start).all()
+        # Convert list of tuples into normal list
+        start_list = list(np.ravel(start_data))
 
-    results =  (session.query(*sel)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
-                       .group_by(Measurement.date)
-                       .all())
+        # Return a list of jsonified minimum, average and maximum temperatures for a specific start date
+        return jsonify(start_list)
+    else:
+        # Query the data from start date to the end date
+        start_end_data = session.query(*sel).\
+                            filter(Measurement.date >= start).\
+                            filter(Measurement.date <= end).all()
+        # Convert list of tuples into normal list
+        start_end_list = list(np.ravel(start_end_data))
 
-    dates = []                       
-    for result in results:
-        date_dict = {}
-        date_dict["Date"] = result[0]
-        date_dict["Low Temp"] = result[1]
-        date_dict["Avg Temp"] = result[2]
-        date_dict["High Temp"] = result[3]
-        dates.append(date_dict)
-    return jsonify(dates)
+        # Return a list of jsonified minimum, average and maximum temperatures for a specific start-end date range
+        return jsonify(start_end_list)
 
-@app.route('/api/v1.0/<startDate>/<endDate>')
-def startEnd(start, end):
-    sel = [Measurement.date, func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)]
 
-    results =  (session.query(*sel)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) >= start)
-                       .filter(func.strftime("%Y-%m-%d", Measurement.date) <= end)
-                       .group_by(Measurement.date)
-                       .all())
+# Example:
+# ------------------
 
-    dates = []                       
-    for result in results:
-        date_dict = {}
-        date_dict["Date"] = result[0]
-        date_dict["Low Temp"] = result[1]
-        date_dict["Avg Temp"] = result[2]
-        date_dict["High Temp"] = result[3]
-        dates.append(date_dict)
-    return jsonify(dates)
+# First change the date in the url
+# To do this, check in the precipitation url a desired valid date/range for start only or start/end
+# --------------------------------------
+
+# For start:
+#http://127.0.0.1:5000/api/v1.0/2016-07-23
+
+# For start/end:
+# http://127.0.0.1:5000/api/v1.0/2016-07-23/2016-08-23
+
+# Array example:
+# --------------------
+#[
+#  Temp Min,
+#  Average Temp,
+#  Temp Max
+#]
+
+# Example output:
+# --------------------
+#[
+#  71.0,
+#  78.14427860696517,
+#  83.0
+#]
+
 
  # Close the session                   
 session.close()
